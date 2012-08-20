@@ -1,0 +1,37 @@
+#!/bin/bash
+
+function usage {
+	echo "Usage: `basename $0` COMMAND FILEPATTERN [FILEPATTERN] ..."
+	exit 1
+}
+
+function match {
+  s=$1
+  shift
+  matchcount=0
+  for arg in $@; do
+    if [[ $s == $arg ]]; then
+      let matchcount+=1
+    fi
+  done
+      
+  test $matchcount -ge 1
+}
+
+[[ $# -le 1 ]] && usage
+
+command="$1"
+shift
+filepattern="$@"
+
+eval $command
+while true; do
+  echo "Waiting for changes..."
+  inotifywait . -rmqe close_write | while read dir event file; do
+	  echo $file
+	  if match $file "$@"; then
+	    eval $command
+	    break
+	  fi
+  done
+done
