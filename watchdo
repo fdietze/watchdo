@@ -1,7 +1,8 @@
 #!/bin/bash
+self=$0
 
 function usage {
-	echo "Usage: `basename $0` COMMAND FILEPATTERN [FILEPATTERN] ..."
+	echo "Usage: `basename $self` COMMAND FILEPATTERN [FILEPATTERN] ..."
 	exit 1
 }
 
@@ -10,7 +11,7 @@ function match {
   shift
   matchcount=0
   for arg in $@; do
-    if [[ $s == $arg ]]; then
+    if test $s == $arg; then
       let matchcount+=1
     fi
   done
@@ -24,14 +25,20 @@ command="$1"
 shift
 filepattern="$@"
 
-eval $command
-while true; do
-  echo "Waiting for changes..."
-  inotifywait . -rmqe close_write | while read dir event file; do
-	  echo $file
-	  if match $file "$@"; then
-	    eval $command
-	    break
-	  fi
-  done
+echo "Watching for changes..."
+inotifywait -rmqe close_write . "$self" | while read dir event file; do
+  path=$dir$file
+  echo $path
+  if match $path "$@" || match $file "$@"; then
+    eval $command
+  fi
+  
+  if test "$path" == "$self"; then
+    killall inotifywait #TODO kill only the process of this file
+    break
+  fi
 done
+
+# The loop only ends if watchdo has been changed
+echo "WatchDo changed, restarting."
+watchdo $command $filepattern
