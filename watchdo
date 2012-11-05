@@ -25,6 +25,8 @@ command="$1"
 shift
 filepattern="$@"
 
+eval $command
+
 echo "Watching for changes..."
 inotifywait -rmqe close_write . "$self" | while read dir event file; do
   path=$dir$file
